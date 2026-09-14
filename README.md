@@ -1,4 +1,4 @@
-# 🔥 F34RDOWN & WORM-GPT WHATSAPP BOT
+# 🔥 F34RDOWN & WORM-GPT WHATSAPP BOT || OPENSOURCE || FREE
 
 Panduan instalasi lengkap bot WhatsApp berbasis Baileys dan OpenRouter AI untuk dijalankan di **Termux (Android)** maupun **Linux (Ubuntu/Debian)**.
 
