@@ -8,9 +8,10 @@ const axios = require('axios');
 // API KEYS ROTATOR POOL
 // ====================================================
 const apiKeys = [
-    "API_KEYS_1",
-    "API_KEYS_2",
-    "API_KEYS_3"
+
+    "APIKEYS1",
+    "APIKEYS2",
+    "APIKEYS3(LAST_API_KEYS)"
 ];
 
 const MODEL_AI = "cohere/north-mini-code:free";
@@ -30,6 +31,7 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
 const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 
 let pairingDitanya = false;
+let botStartTime = Math.floor(Date.now() / 1000);
 
 async function duckDuckGoSearch(query) {
     try {
@@ -53,7 +55,7 @@ async function duckDuckGoSearch(query) {
 }
 
 async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('sesi_bot');
+    const { state, saveCreds } = await useMultiFileAuthState('sesi_vites');
 
     const sock = makeWASocket({
         auth: state,
@@ -84,11 +86,11 @@ async function connectToWhatsApp() {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
 
         if (connection === 'open') {
-            console.log('✅ Bot WhatsApp F34RDOWN AI Berhasil Terhubung! 🔥');
+            console.log('✅ Bot WhatsApp F34RDOWN AI Berhasil Terhubung! 🔥 (Updated QRIS Active)');
         } else if (connection === 'close') {
             console.log('Koneksi terputus. Kode:', statusCode);
             if (statusCode === DisconnectReason.loggedOut) {
-                console.log('❌ Sesi mati. Hapus folder "sesi_bot" lalu restart.');
+                console.log('❌ Sesi mati. Hapus folder "sesi_vites" lalu restart.');
                 process.exit(1);
             }
             console.log('Menyambung ulang...');
@@ -101,9 +103,13 @@ async function connectToWhatsApp() {
         if (!msg.message || msg.key.fromMe) return;
 
         const remoteJid = msg.key.remoteJid;
-        const isGroup = remoteJid.endsWith('@g.us');
-        const sender = isGroup ? msg.key.participant : remoteJid;
+        if (remoteJid.endsWith('@g.us')) return;
+
+        const msgTimestamp = msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000);
+        if (msgTimestamp < botStartTime) return;
+
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+        if (!text) return;
 
         const prefix = '!';
         const isCmd = text.startsWith(prefix);
@@ -111,16 +117,22 @@ async function connectToWhatsApp() {
         const args = text.trim().split(/ +/).slice(1);
         const q = args.join(" ");
 
-        // JIKA TIDAK ADA PREFIX '!', BALAS SEBAGAI GENTLEMAN + KOP [F34RDOWN BOT]
         if (!isCmd) {
-            console.log(`Pesan tanpa prefix dari ${sender}: ${text}`);
+            console.log(`Pesan pribadi baru dari ${remoteJid}: ${text}`);
 
-            // Cek apakah user mau beli tools, worm, atau galarius
             const lowerText = text.toLowerCase();
             let replyContent = "";
+            let sendQRIS = false;
 
-            if (lowerText.includes('beli') || lowerText.includes('tools') || lowerText.includes('worm') || lowerText.includes('galarius') || lowerText.includes('jual')) {
-                replyContent = "Tunggu yang membuat saya, dia sedang sibuk.";
+            if (lowerText.includes('beli') || lowerText.includes('jual') || lowerText.includes('galarius')) {
+                replyContent = "Harganya 100k. Tunggu yang membuat saya, dia sedang sibuk.";
+            } else if (lowerText.includes('worm') || lowerText.includes('wormgpt')) {
+                replyContent = "WormGPT AI tersedia dengan harga 200K Permanent (akses penuh, banyak fiturnya). Silakan lakukan pembayaran jika berminat.";
+            } else if (lowerText.includes('spam') || lowerText.includes('toolsv5') || lowerText.includes('otp') || lowerText.includes('sadap') || lowerText.includes('kamera') || lowerText.includes('lokasi')) {
+                replyContent = "Paket Tools All-in-One (Spam, Toolsv5, OTP, Sadap, Kamera, Lokasi) harganya 400K Permanent. 1 script berisi 180+ tools lebih.";
+            } else if (lowerText.includes('tf') || lowerText.includes('transfer') || lowerText.includes('payment') || lowerText.includes('bayar') || lowerText.includes('qris')) {
+                replyContent = "Silakan scan QRIS Merchant di bawah ini untuk melakukan pembayaran:";
+                sendQRIS = true;
             } else {
                 try {
                     const aiRotator = getRotatedOpenAI();
@@ -139,12 +151,19 @@ async function connectToWhatsApp() {
                 }
             }
 
-            const finalReply = `[F34RDOWN BOT] !menu [UNTUK MELIHAT FITUR]\n\n${replyContent}`;
+            const finalReply = `[F34RDOWN BOT]\n\n${replyContent}`;
             await sock.sendMessage(remoteJid, { text: finalReply }, { quoted: msg });
+
+            if (sendQRIS) {
+                await sock.sendMessage(remoteJid, {
+                    image: { url: 'https://g.top4top.io/p_3912tfwe60.jpg' },
+                    caption: '📱 QRIS Merchant Official F34RDOWN'
+                }, { quoted: msg });
+            }
             return;
         }
 
-        console.log(`Perintah masuk: ${command} dari ${sender}`);
+        console.log(`Perintah masuk: ${command} dari ${remoteJid}`);
 
         switch (command) {
             case 'menu':
@@ -154,10 +173,9 @@ async function connectToWhatsApp() {
                     "👉 *!ai* [pesan] - Ngobrol dengan WormGPT kejam\n" +
                     "👉 *!txt2img* [deskripsi] - Buat gambar AI keren\n" +
                     "👉 *!web* [query] - Real-time DuckDuckGo Web Search\n\n" +
-                    "*🎨 MEDIA & CREATOR*\n" +
-                    "👉 *!qc* [teks] - Bikin Fake Quote WhatsApp Chat\n" +
-                    "👉 *!qr* [teks] - Generate QR Code instan\n\n" +
-                    "*📥 DOWNLOADER*\n" +
+                    "*📥 DOWNLOADERS*\n" +
+                    "👉 *!yt3* [link yt] - Download & Kirim Audio MP3\n" +
+                    "👉 *!yt4* [link yt] - Download & Kirim Video MP4\n" +
                     "👉 *!tiktok* [link] - Download video TikTok No WM\n" +
                     "👉 *!pinterest* [query] - Cari gambar aesthetic\n\n" +
                     "*🛠️ UTILITY*\n" +
@@ -168,6 +186,42 @@ async function connectToWhatsApp() {
                 await sock.sendMessage(remoteJid, { text: menuText }, { quoted: msg });
                 break;
             }
+
+            case 'yt3':
+                if (!q) {
+                    await sock.sendMessage(remoteJid, { text: 'Masukkan link YouTube MP3, tolol! Contoh: !yt3 https://youtu.be/xxxx' }, { quoted: msg });
+                    break;
+                }
+                await sock.sendMessage(remoteJid, { text: `⏳ _Sedang mengunduh audio MP3..._` }, { quoted: msg });
+                try {
+                    const audioUrl = `https://api.vkrtechno.workers.dev/download?q=${encodeURIComponent(q)}`;
+                    await sock.sendMessage(remoteJid, {
+                        audio: { url: audioUrl },
+                        mimetype: 'audio/mp4',
+                        ptt: false,
+                        caption: `🎵 *MP3 Audio Downloader*`
+                    }, { quoted: msg });
+                } catch (e) {
+                    await sock.sendMessage(remoteJid, { text: `❌ Gagal mengunduh MP3! (${e.message})` }, { quoted: msg });
+                }
+                break;
+
+            case 'yt4':
+                if (!q) {
+                    await sock.sendMessage(remoteJid, { text: 'Masukkan link YouTube MP4, tolol! Contoh: !yt4 https://youtu.be/xxxx' }, { quoted: msg });
+                    break;
+                }
+                await sock.sendMessage(remoteJid, { text: `⏳ _Sedang mengunduh video MP4..._` }, { quoted: msg });
+                try {
+                    const videoUrl = `https://api.vkrtechno.workers.dev/download/video?q=${encodeURIComponent(q)}`;
+                    await sock.sendMessage(remoteJid, {
+                        video: { url: videoUrl },
+                        caption: `🎬 *MP4 Video Downloader*`
+                    }, { quoted: msg });
+                } catch (e) {
+                    await sock.sendMessage(remoteJid, { text: `❌ Gagal mengunduh video MP4! (${e.message})` }, { quoted: msg });
+                }
+                break;
 
             case 'ai':
                 if (!q) {
@@ -212,14 +266,6 @@ async function connectToWhatsApp() {
                 await sock.sendMessage(remoteJid, { text: `🌐 *DUCKDUCKGO SEARCH RESULT:*\n\n${searchRes}` }, { quoted: msg });
                 break;
 
-            case 'qr':
-                if (!q) {
-                    await sock.sendMessage(remoteJid, { text: 'Masukkan teks untuk QR Code!' }, { quoted: msg });
-                    break;
-                }
-                await sock.sendMessage(remoteJid, { image: { url: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(q)}` }, caption: `📱 QR Code: ${q}` }, { quoted: msg });
-                break;
-
             case 'tiktok':
             case 'tt':
                 if (!q) {
@@ -249,39 +295,6 @@ async function connectToWhatsApp() {
                 await sock.sendMessage(remoteJid, { image: { url: `https://api.botcahx.eu.org/api/search/pinterest?text=${encodeURIComponent(q)}&apikey=free` }, caption: `🖼️ Pinterest: ${q}` }, { quoted: msg }).catch(async () => {
                     await sock.sendMessage(remoteJid, { image: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(q)}` }, caption: `🖼️ Pinterest: ${q}` }, { quoted: msg });
                 });
-                break;
-
-            case 'qc':
-                if (!q) {
-                    await sock.sendMessage(remoteJid, { text: 'Masukkan teks untuk Quote!' }, { quoted: msg });
-                    break;
-                }
-                try {
-                    const qcJson = {
-                        "type": "quote",
-                        "format": "png",
-                        "backgroundColor": "#19232a",
-                        "messages": [
-                            {
-                                "entities": [],
-                                "avatar": true,
-                                "from": {
-                                    "name": "User",
-                                    "photo": {
-                                        "url": "https://i.ibb.co/3W4T54p/default-profile.png"
-                                    }
-                                },
-                                "text": q,
-                                "replyMessage": {}
-                            }
-                        ]
-                    };
-                    const qcRes = await axios.post('https://bot.lyo.su/quote/generate', qcJson, { headers: { 'Content-Type': 'application/json' } });
-                    const buffer = Buffer.from(qcRes.data.result.image, 'base64');
-                    await sock.sendMessage(remoteJid, { image: buffer, caption: '💬 Quote Generated!' }, { quoted: msg });
-                } catch (e) {
-                    await sock.sendMessage(remoteJid, { text: '❌ Gagal membuat Quote!' }, { quoted: msg });
-                }
                 break;
 
             case 'ping':
